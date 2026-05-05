@@ -1,7 +1,10 @@
 local IsAnimal = false
 local IsAttacking = false
+local IsCarrying = false
+local CarriedPed = nil
+local attackPressedTime = nil
 
-RegisterNetEvent("fixanimals:attack")
+AddNetEvent("fixanimals:attack")
 
 function SetControlContext(pad, context)
 	Citizen.InvokeNative(0x2804658EB7D8A50B, pad, context)
@@ -23,11 +26,17 @@ function PlayAnimation(anim)
 
 	RequestAnimDict(anim.dict)
 
+	local timeout = 0
 	while not HasAnimDictLoaded(anim.dict) do
-		Citizen.Wait(0)
+		Citizen.Wait(100)
+		timeout = timeout + 100
+		if timeout >= 5000 then
+			print("Timed out waiting for animation dictionary: " .. anim.dict)
+			return
+		end
 	end
 
-	TaskPlayAnim(PlayerPedId(), anim.dict, anim.name, 4.0, 4.0, -1, 0, 0.0, false, false, false, "", false)
+	TaskPlayAnim(PlayerPedId(), anim.dict, anim.name, 4.0, 4.0, -1, 0, 0.0, false, false, false)
 
 	RemoveAnimDict(anim.dict)
 end
@@ -37,7 +46,7 @@ function IsPvpEnabled()
 end
 
 function IsValidTarget(ped)
-	return not IsPedDeadOrDying(ped) and not (IsPedAPlayer(ped) and not IsPvpEnabled())
+	return not IsPedDeadOrDying(ped, true) and not (IsPedAPlayer(ped) and not IsPvpEnabled())
 end
 
 function GetClosestPed(playerPed, radius)
@@ -115,14 +124,67 @@ function GetPlayerServerIdFromPed(ped)
 	end
 end
 
+function GetAnimalSize(ped)
+	return Config.AnimalSizes[GetEntityModel(ped)]
+end
+
+function CanCarry(carrier, target)
+	if not DoesEntityExist(target) then return false end
+	if not IsPedDeadOrDying(target, true) then return false end  -- only dead peds
+	if IsPedAPlayer(target) then return false end
+
+	local carrierSize = GetAnimalSize(carrier)
+	local targetSize  = GetAnimalSize(target)
+
+	return carrierSize ~= nil and targetSize ~= nil and carrierSize > targetSize
+end
+
+function GrabPed(playerPed, target)
+	-- Attempt to take network control for networked entities
+	if NetworkGetEntityIsNetworked(target) and not NetworkHasControlOfEntity(target) then
+		NetworkRequestControlOfEntity(target)
+	end
+
+	ClearPedTasksImmediately(target)
+	SetEntityInvincible(target, true)
+	-- No ragdoll call needed – ped is already dead/limp
+
+	-- Prefer jaw bone, fall back to head, then root
+	local boneIndex = GetEntityBoneIndexByName(playerPed, "SKEL_Jaw")
+	if boneIndex == -1 then
+		boneIndex = GetEntityBoneIndexByName(playerPed, "SKEL_Head")
+	end
+
+	AttachEntityToEntity(
+		target, playerPed, boneIndex,
+		Config.CarryOffset.x, Config.CarryOffset.y, Config.CarryOffset.z,
+		Config.CarryRotation.x, Config.CarryRotation.y, Config.CarryRotation.z,
+		false, false, false, false, 2, true
+	)
+
+	CarriedPed = target
+	IsCarrying = true
+end
+
+function DropPed()
+	if not IsCarrying or not CarriedPed then return end
+
+	DetachEntity(CarriedPed, true, true)
+	SetEntityInvincible(CarriedPed, false)
+	SetPedToRagdoll(CarriedPed, 2000, 2000, 0, 0, 0, 0)
+
+	CarriedPed = nil
+	IsCarrying = false
+end
+
 function Attack()
-	if IsAttacking then
+	if IsAttacking or IsCarrying then
 		return
 	end
 
 	local playerPed = PlayerPedId()
 
-	if IsPedDeadOrDying(playerPed) or IsPedRagdoll(playerPed) then
+	if IsPedDeadOrDying(playerPed, true) or IsPedRagdoll(playerPed) then
 		return
 	end
 
@@ -163,12 +225,22 @@ AddEventHandler("fixanimals:attack", function(attacker, entity)
 	local attackerPed = GetPlayerPed(GetPlayerFromServerId(attacker))
 	local attackType = GetAttackType(attackerPed)
 
+	-- Attacker model may not be in config (e.g. ped changed after attack was triggered)
+	if not attackType then
+		return
+	end
+
 	if entity == -1 then
+		-- Player-vs-player: only the targeted player receives this event
 		if IsPvpEnabled() then
 			ApplyAttackToTarget(attackerPed, PlayerPedId(), attackType)
 		end
 	else
-		ApplyAttackToTarget(attackerPed, NetToPed(entity), attackType)
+		-- NPC attack is broadcast to all clients; only the entity owner should apply damage
+		local targetPed = NetToPed(entity)
+		if targetPed ~= 0 and NetworkHasControlOfEntity(targetPed) then
+			ApplyAttackToTarget(attackerPed, targetPed, attackType)
+		end
 	end
 end)
 
@@ -180,8 +252,10 @@ Citizen.CreateThread(function()
 		local ped = PlayerPedId()
 
 		if ped ~= lastPed then
-			if IsPedHuman(ped) then
-				-- Reset control context
+			if IsPedHuman(ped) then			-- Drop any carried ped before switching back to human
+			if IsCarrying then
+				DropPed()
+			end				-- Reset control context
 				SetControlContext(2, 0)
 				IsAnimal = false
 			else
@@ -207,9 +281,36 @@ Citizen.CreateThread(function()
 			-- Disable first person mode as an animal since the camera is glitchy and may cause crashes
 			DisableFirstPersonCamThisFrame()
 
-			-- Allow animals that can't normally attack to attack
+			local playerPed = PlayerPedId()
+
+			-- Short press = attack; hold (Config.CarryHoldTime ms) = grab/drop
 			if IsControlJustPressed(0, `INPUT_ATTACK`) then
-				Attack()
+				attackPressedTime = GetGameTimer()
+			end
+
+			if IsControlJustReleased(0, `INPUT_ATTACK`) then
+				if attackPressedTime then
+					local heldMs = GetGameTimer() - attackPressedTime
+					attackPressedTime = nil
+
+					if IsCarrying then
+						DropPed()
+					elseif heldMs >= Config.CarryHoldTime then
+						local target = GetClosestPed(playerPed, Config.CarryRadius)
+						if target and CanCarry(playerPed, target) then
+							GrabPed(playerPed, target)
+						end
+					else
+						Attack()
+					end
+				end
+			end
+
+			-- Drop carried ped if it was somehow removed
+			if IsCarrying then
+				if not CarriedPed or not DoesEntityExist(CarriedPed) then
+					DropPed()
+				end
 			end
 
 			-- Toggle crouched movement

@@ -1,0 +1,40 @@
+{
+  "runtime": {
+    "version": "Lua 5.4"
+  },
+  "diagnostics": {
+    "globals": [
+      "AddNetEvent",
+      "Citizen",
+      "Config",
+      "exports",
+      "vector3",
+      "GetGameTimer",
+      "TriggerEvent",
+      "TriggerServerEvent",
+      "TriggerClientEvent",
+      "RegisterNetEvent",
+      "AddEventHandler",
+      "NetworkRequestControlOfEntity",
+      "NetworkHasControlOfEntity",
+      "NetworkGetEntityIsNetworked",
+      "PedToNet",
+      "NetToPed",
+      "GetActivePlayers",
+      "GetPlayerServerId",
+      "GetPlayerFromServerId",
+      "CreateItemset",
+      "GetIndexedItemInItemset",
+      "IsItemsetValid",
+      "DestroyItemset"
+    ],
+    "disable": [
+      "param-type-mismatch",
+      "missing-parameter",
+      "redundant-parameter"
+    ]
+  },
+  "workspace": {
+    "ignoreDir": []
+  }
+}
