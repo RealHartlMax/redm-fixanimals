@@ -1,6 +1,9 @@
-AddNetEvent("fixanimals:attack")
+RegisterNetEvent("fixanimals:attack")
 
 AddEventHandler("fixanimals:attack", function(target, entity)
+	target = tonumber(target)
+	entity = tonumber(entity)
+
 	-- Validate inputs: both must be numbers
 	if type(target) ~= "number" or type(entity) ~= "number" then
 		return
@@ -8,14 +11,7 @@ AddEventHandler("fixanimals:attack", function(target, entity)
 
 	-- target must be -1 (NPC) or a valid connected player server ID
 	if target ~= -1 then
-		local validTarget = false
-		for _, pid in ipairs(GetActivePlayers()) do
-			if pid == target then
-				validTarget = true
-				break
-			end
-		end
-		if not validTarget then
+		if not GetPlayerName(tostring(target)) then
 			return
 		end
 	end

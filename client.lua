@@ -4,7 +4,7 @@ local IsCarrying = false
 local CarriedPed = nil
 local attackPressedTime = nil
 
-AddNetEvent("fixanimals:attack")
+RegisterNetEvent("fixanimals:attack")
 
 function SetControlContext(pad, context)
 	Citizen.InvokeNative(0x2804658EB7D8A50B, pad, context)
