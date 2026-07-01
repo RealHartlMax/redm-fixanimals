@@ -80,6 +80,7 @@ Only the cougar and panther have a visible difference when crouched.
 | `Config.AttackTypes` | — | Per-model attack animations, radius, force, and damage |
 | `Config.AttackCooldown` | `2000` ms | Cooldown between attacks |
 | `Config.BarrierBypassEnabled` | `true` | Enables/disables invisible barrier bypass for animal peds |
+| `Config.BarrierPollMs` | `500` ms | Poll interval for ped/barrier checks (lower = more aggressive refresh) |
 | `Config.CarryHoldTime` | `600` ms | How long to hold the attack button to grab instead of attack |
 | `Config.CarryRadius` | `2.0` m | Maximum distance to grab a dead ped |
 | `Config.CarryOffset` | `vector3(0, 0.25, -0.08)` | Attachment offset from the carrier's jaw bone |

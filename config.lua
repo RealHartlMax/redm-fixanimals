@@ -190,6 +190,10 @@ Config.AttackCooldown = 2000
 -- false = keep default game barrier behavior
 Config.BarrierBypassEnabled = true
 
+-- Polling interval in milliseconds for ped state + barrier flag refresh.
+-- Lower values enforce flags more aggressively but are still lightweight.
+Config.BarrierPollMs = 500
+
 -- How long (ms) INPUT_ATTACK must be held to trigger a grab instead of an attack.
 Config.CarryHoldTime = 600
 

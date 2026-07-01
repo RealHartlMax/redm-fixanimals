@@ -272,11 +272,10 @@ Citizen.CreateThread(function()
 
 		if barrierBypassEnabled then
 			if not isHuman then
-				if not barriersDisabled or ped ~= barrierPed then
-					SetBarrierFlags(ped, false)
-					barriersDisabled = true
-					barrierPed = ped
-				end
+				-- Re-apply regularly: engine/scripts may restore these flags.
+				SetBarrierFlags(ped, false)
+				barriersDisabled = true
+				barrierPed = ped
 			elseif barriersDisabled then
 				SetBarrierFlags(ped, true)
 				barriersDisabled = false
@@ -307,7 +306,7 @@ Citizen.CreateThread(function()
 			lastPed = ped
 		end
 
-		Citizen.Wait(1000)
+		Citizen.Wait(Config.BarrierPollMs or 1000)
 	end
 end)
 
