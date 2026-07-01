@@ -3,6 +3,16 @@ local IsAttacking = false
 local IsCarrying = false
 local CarriedPed = nil
 local attackPressedTime = nil
+local barriersDisabled = false
+local barrierPed = 0
+
+local BarrierConfigFlags = {
+	312,
+	419,
+	277,
+	136,
+	331
+}
 
 RegisterNetEvent("fixanimals:attack")
 
@@ -177,6 +187,12 @@ function DropPed()
 	IsCarrying = false
 end
 
+function SetBarrierFlags(ped, enabled)
+	for _, flag in ipairs(BarrierConfigFlags) do
+		SetPedConfigFlag(ped, flag, enabled)
+	end
+end
+
 function Attack()
 	if IsAttacking or IsCarrying then
 		return
@@ -250,12 +266,36 @@ Citizen.CreateThread(function()
 
 	while true do
 		local ped = PlayerPedId()
+		local humanState = IsPedHuman(ped)
+		local isHuman = humanState == 1 or humanState == true
+		local barrierBypassEnabled = Config.BarrierBypassEnabled ~= false
+
+		if barrierBypassEnabled then
+			if not isHuman then
+				if not barriersDisabled or ped ~= barrierPed then
+					SetBarrierFlags(ped, false)
+					barriersDisabled = true
+					barrierPed = ped
+				end
+			elseif barriersDisabled then
+				SetBarrierFlags(ped, true)
+				barriersDisabled = false
+				barrierPed = 0
+			end
+		elseif barriersDisabled then
+			SetBarrierFlags(ped, true)
+			barriersDisabled = false
+			barrierPed = 0
+		end
 
 		if ped ~= lastPed then
-			if IsPedHuman(ped) then			-- Drop any carried ped before switching back to human
-			if IsCarrying then
-				DropPed()
-			end				-- Reset control context
+			if isHuman then
+				-- Drop any carried ped before switching back to human
+				if IsCarrying then
+					DropPed()
+				end
+
+				-- Reset control context
 				SetControlContext(2, 0)
 				IsAnimal = false
 			else

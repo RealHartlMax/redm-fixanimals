@@ -185,6 +185,11 @@ Config.AttackTypes = {
 
 Config.AttackCooldown = 2000
 
+-- Enable/disable invisible barrier bypass for animal peds.
+-- true = disable barrier flags for animals and restore for humans
+-- false = keep default game barrier behavior
+Config.BarrierBypassEnabled = true
+
 -- How long (ms) INPUT_ATTACK must be held to trigger a grab instead of an attack.
 Config.CarryHoldTime = 600
 

@@ -13,6 +13,7 @@ A RedM resource that fixes a number of issues with playing as an animal ped, and
 | Bird and fish peds cannot move at all by default | Control context is forced to `OnMount` |
 | Animal control set is very limited; other scripts often don't work | `OnMount` enables nearly the same controls as a mounted human ped |
 | First person camera is glitchy and can crash the game on certain animals | First person mode is disabled while playing as an animal |
+| Animal and horse peds can hit invisible map/interior barriers | Ped config barrier flags are disabled for animals and restored for humans |
 | Only a very limited number of animals can attack | Custom attack system added |
 
 ---
@@ -29,6 +30,15 @@ SetControlContext(2, `OnMount`)
 ```
 
 This allows birds to fly, fish to swim, and restores most of the same inputs as a human ped on a mount.
+
+### Animal barrier bypass
+
+The script uses a lightweight 1000 ms client polling loop to detect if the player is currently using a human or animal ped.
+
+- If the player is an animal, barrier-related ped config flags are set to `false`
+- If the player switches back to a human ped, those flags are set back to `true`
+
+This avoids invisible barrier collisions for animal gameplay while preserving normal behavior for humans.
 
 ### Attack system
 
@@ -69,6 +79,7 @@ Only the cougar and panther have a visible difference when crouched.
 |---|---|---|
 | `Config.AttackTypes` | — | Per-model attack animations, radius, force, and damage |
 | `Config.AttackCooldown` | `2000` ms | Cooldown between attacks |
+| `Config.BarrierBypassEnabled` | `true` | Enables/disables invisible barrier bypass for animal peds |
 | `Config.CarryHoldTime` | `600` ms | How long to hold the attack button to grab instead of attack |
 | `Config.CarryRadius` | `2.0` m | Maximum distance to grab a dead ped |
 | `Config.CarryOffset` | `vector3(0, 0.25, -0.08)` | Attachment offset from the carrier's jaw bone |
